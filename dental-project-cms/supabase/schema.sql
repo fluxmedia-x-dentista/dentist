@@ -133,3 +133,27 @@ on conflict do nothing;
 insert into public.working_hours(day_of_week,enabled,open_time,close_time,break_start,break_end,slot_interval_minutes) values
 (0,false,'09:00','17:00',null,null,30),(1,true,'09:00','18:00','12:30','14:00',30),(2,true,'09:00','18:00','12:30','14:00',30),(3,true,'09:00','18:00','12:30','14:00',30),(4,true,'09:00','18:00','12:30','14:00',30),(5,true,'09:00','18:00','12:30','14:00',30),(6,true,'09:00','13:00',null,null,30)
 on conflict(day_of_week) do nothing;
+
+
+-- Public image bucket used by the clinic profile's hero and dentist photos.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('clinic-images', 'clinic-images', true, 5242880, array['image/jpeg','image/png','image/webp','image/gif','image/avif'])
+on conflict (id) do update set public = true, file_size_limit = 5242880,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif','image/avif'];
+
+drop policy if exists "Public can view clinic images" on storage.objects;
+create policy "Public can view clinic images" on storage.objects
+for select to anon, authenticated using (bucket_id = 'clinic-images');
+
+drop policy if exists "Clinic admins upload clinic images" on storage.objects;
+create policy "Clinic admins upload clinic images" on storage.objects
+for insert to authenticated with check (bucket_id = 'clinic-images' and public.is_clinic_admin());
+
+drop policy if exists "Clinic admins update clinic images" on storage.objects;
+create policy "Clinic admins update clinic images" on storage.objects
+for update to authenticated using (bucket_id = 'clinic-images' and public.is_clinic_admin())
+with check (bucket_id = 'clinic-images' and public.is_clinic_admin());
+
+drop policy if exists "Clinic admins delete clinic images" on storage.objects;
+create policy "Clinic admins delete clinic images" on storage.objects
+for delete to authenticated using (bucket_id = 'clinic-images' and public.is_clinic_admin());

@@ -1,71 +1,54 @@
-# Dental Project — website + Supabase CMS
+# Dental clinic website + appointment booking
 
-A responsive dental representative website inspired by the supplied `Naji Sedki · Dental Project` design, rebuilt as a Next.js app with a Supabase database and protected admin dashboard. The public site includes the profile/hero, company story, product categories and searchable product catalog, services, catalog download, contact details, social links, and WhatsApp quotation workflow.
+A separate multilingual clinic website (French, Arabic/RTL, English) built with Next.js, TypeScript, and Supabase.
 
-## Tech stack
-- Next.js 14 / React / TypeScript
-- Supabase Auth for admin sign-in
-- Supabase Postgres for site settings, products, categories, services, and optional quote-request storage
-- Supabase Storage for profile/product images and PDF catalog files
-- Responsive desktop/mobile styling
+## Features
+- Dentist/clinic profile, treatments, contact details, and responsive clinic landing page.
+- Language switcher for French, Arabic (right-to-left), and English.
+- Appointment requests with service durations and live available slots.
+- Requests require manual approval. Pending and confirmed appointments both reserve their slot.
+- Weekly working hours, breaks, closures, and custom blocked periods.
+- Private dashboard at `/admin` for appointment approvals, schedule, services, blocked periods, and clinic profile.
+- Supabase RPC rechecks availability at submission, uses a per-day advisory lock, and a Postgres exclusion constraint prevents overlapping pending/confirmed appointments.
 
-## 1. Create the database
-1. Create a project at https://supabase.com.
-2. Open **SQL Editor → New query**.
-3. Paste and run the complete `supabase/schema.sql` file.
-4. The script creates the tables, public/admin row-level security policies, starter profile content, starter categories/services, and the `dental-project-media` public media bucket.
-
-## 2. Create an administrator
-1. In Supabase, open **Authentication → Users → Add user** and create the email/password that should manage the site. Confirm the account if your Auth settings require it.
-2. Copy that user's UUID from the user list.
-3. In SQL Editor run the following, replacing the example UUID with the real one:
+## 1. Supabase database setup
+1. Open the correct Supabase project and go to **SQL Editor → New query**.
+2. Run the complete `supabase/schema.sql` file.
+3. The SQL seeds example treatments and default working hours (Monday-Friday 09:00-18:00 with 12:30-14:00 break, Saturday 09:00-13:00, Sunday closed). Adjust these in `/admin`.
+4. Create the administrator account under **Authentication → Users**.
+5. Copy the auth user's UUID and run this in SQL Editor, replacing the UUID:
 
 ```sql
-insert into public.admin_users (user_id)
-values ('PASTE-AUTH-USER-UUID-HERE');
+insert into public.admin_users(user_id) values ('PASTE-AUTH-USER-UUID-HERE');
 ```
 
-Only users listed in `public.admin_users` can write website data or upload media. Do not add public visitors to this table.
+Only users in `admin_users` can access dashboard data or manage the clinic. Public visitors cannot directly read patient appointment records; they use controlled database functions to request an appointment and see free slots.
 
-## 3. Configure local development
-1. Copy `.env.example` to `.env.local`.
-2. Fill in the Project URL and publishable/anon key from **Supabase → Project Settings → API**:
+> If this Supabase project already contains the earlier commercial website schema, take a backup first. This schema adds clinic-specific tables and leaves old tables in place, but the new website no longer uses the old product/catalog tables.
+
+## 2. Environment variables
+Set these locally in `.env.local` and in Vercel project environment variables:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
 ```
 
-3. Install dependencies and run the dev server:
+Never put the Supabase service-role key in browser code or a `NEXT_PUBLIC_` variable.
 
+## 3. Run locally
 ```bash
 npm install
 npm run dev
 ```
+Open `http://localhost:3000` and `http://localhost:3000/admin`.
 
-Open `http://localhost:3000`; open `http://localhost:3000/admin` to sign in.
+## 4. Deploy
+Import this repository into Vercel with the project root set to `dental-project-cms`, configure the two Supabase environment variables, and redeploy. Verify the SQL schema is installed and create the admin user before enabling real bookings.
 
-## 4. Deploy to Vercel
-1. Push this project to your GitHub repository.
-2. Import the repository in Vercel (framework preset: Next.js).
-3. In **Vercel → Project → Settings → Environment Variables**, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` for Production and Preview as needed.
-4. Redeploy after saving the variables.
-5. Test the homepage and `/admin` on the deployed domain.
-
-## What the admin can edit
-- Representative name/title, company, contact details, market, experience, languages, hero tagline, profile/about copy, company description, mission, accent color
-- Profile photo and PDF catalog uploads
-- Social links
-- Add/edit/delete/publish product categories
-- Add/edit/delete/publish products, assign categories, add SKU, description, price/currency, image and featured status
-- Add/edit/delete/publish services
-
-Changes saved in the admin dashboard are read from Supabase by the public website. No code edit is required for routine content updates.
-
-## Notes
-- The WhatsApp number must be international format digits only, for example `2126XXXXXXXX`, without `+`, spaces, or punctuation.
-- Starter contact details are examples/placeholders. Replace them in `/admin` before launch.
-- Product entries start empty intentionally; add real product data and images in the admin panel. Starter categories and services are seeded by SQL.
-- The enquiry form opens WhatsApp with a prefilled message. The `quote_requests` table and admin-only RLS policy are included if you later want a server-side form submission workflow; the current frontend does not store customer enquiries in the database.
-- The media bucket is public so product/profile/catalog URLs can be displayed to visitors. Only approved admin accounts can upload, update, or delete files.
-- Never place a Supabase service-role key in a `NEXT_PUBLIC_` environment variable or in browser code.
+## Before launch
+- Replace the dentist name, clinic name, address, phone, and email in the admin profile.
+- Review treatment names and durations.
+- Configure actual working hours, breaks, holidays, and time-off blocks.
+- Test booking a slot, verify it disappears for a second visitor, and test reject/cancel behavior.
+- Clinic time zone is set to `Africa/Casablanca`.
